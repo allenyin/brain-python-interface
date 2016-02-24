@@ -55,25 +55,16 @@ function TaskInterfaceConstructor() {
 	};
 	var states = {
 		completed: function() {
-			console.log("state = completed")
 			$(window).unbind("unload");
 			this.tr.addClass("rowactive active");
 			$(".active").removeClass("running error testing");
 			this.disable();
 			$(".startbtn").hide()
-			$("#finished_task_buttons").show();
+			$("#copybtn").show();
 			$("#bmi").hide();
 			this.report.deactivate();
-
-			$("#report").show()
-			$("#notes").show()		
-
-			this.__date.each(function(index, elem) {
-				$(this).css('background-color', '#FFF');
-			})	
 		},
 		stopped: function() {
-			console.log("state = stopped")
 			$(window).unbind("unload");
 			$(".active").removeClass("running error testing");
 			this.tr.addClass("rowactive active");
@@ -81,25 +72,19 @@ function TaskInterfaceConstructor() {
 			$("#stopbtn").hide()
 			$("#startbtn").show()
 			$("#testbtn").show()
-			$("#finished_task_buttons").hide();
+			$("#copybtn").hide();
 			$("#bmi").hide();
-
-			$("#report").hide()
-			$("#notes").hide()
 		},
 		running: function(info) {
-			console.log("state = running")
 			$(window).unbind("unload");
 			$(".active").removeClass("error testing").addClass("running");
 			this.disable();
 			$("#stopbtn").show()
 			$("#startbtn").hide()
 			$("#testbtn").hide()
-			$("#finished_task_buttons").hide();
+			$("#copybtn").hide();
 			$("#bmi").hide();
 			// this.report.activate();
-			$("#report").show()
-			$("#notes").show()				
 		},
 		testing: function(info) {
 			$(window).unload(this.stop.bind(this));
@@ -108,23 +93,18 @@ function TaskInterfaceConstructor() {
 			$("#stopbtn").show()
 			$("#startbtn").hide()
 			$("#testbtn").hide()
-			$("#finished_task_buttons").hide()
+			$("#copybtn").hide()
 			$("#bmi").hide();
 			// this.report.activate();
-
-			$("#report").show()
-			$("#notes").show()				
 		},
 		error: function(info) {
 			$(window).unbind("unload");
 			$(".active").removeClass("running testing").addClass("error");
 			this.disable();
 			$(".startbtn").hide();
-			$("#finished_task_buttons").show();
+			$("#copybtn").show();
 			$("#bmi").hide();
 			this.report.deactivate();
-
-			$("#report").show()
 		},
 		errtest: function(info) {
 			$(window).unbind("unload");
@@ -133,11 +113,9 @@ function TaskInterfaceConstructor() {
 			$("#stopbtn").hide();
 			$("#startbtn").show();
 			$("#testbtn").show();
-			$("#finished_task_buttons").hide();
+			$("#copybtn").hide();
 			$("#bmi").hide();
 			this.report.deactivate();
-
-			$("#report").show()
 		}
 	};
 }
@@ -152,50 +130,36 @@ function TaskEntry(idx, info){
     /* Constructor for TaskEntry class
      * idx: string of format row\d\d\d where \d\d\d represents the string numbers of the database ID of the block
      */
-
-    // hide the old content
-	$("#content").hide(); 
-
+	$("#content").hide();
 	this.sequence = new Sequence();
 	this.params = new Parameters();
+
 	this.report = new Report(TaskInterface.trigger.bind(this));
 	
 	$("#parameters").append(this.params.obj);
     $("#plots").empty()
 
-    console.log("JS constructing task entry", idx)
-
 	if (idx) { // the task entry which was clicked has an id (stored in the database)
-
-		// parse the actual integer database ID out of the HTML object name
 		this.idx = parseInt(idx.match(/row(\d+)/)[1]);
-		var id_num = this.idx
-
-		// Create a jQuery object to represent the table row
 		this.tr = $("#"+idx);
-		this.__date = $("#"+idx + " .colDate");
-		console.log(this.__date);
-
 		this.status = this.tr.hasClass("running") ? "running" : "completed";
 		if (this.status == 'running')
 			this.report.activate();
 
-		$.getJSON("ajax/exp_info/"+this.idx+"/", // URL to query for data on this task entry
-			{}, // POST data to send to the server
-			function (expinfo) { // function to run on successful response
-				this.notes = new Notes(this.idx);
-				this.update(expinfo);
-				this.disable();
-				$("#content").show("slide", "fast");
+		// show the wheel
 
-				// If the server responds with data, disable reacting to clicks on the current row so that things don't get reset
-				this.tr.unbind("click");
-			}.bind(this)
-			).error(
-				function() {
-					alert("There was an error accessing task entry " + id_num + ". See terminal for full error message"); 
-				}
-			);
+		$('#wait_wheel').show()
+		console.log('showing the wheel')
+
+		$.getJSON("ajax/exp_info/"+this.idx+"/", {}, function (expinfo) {
+			this.notes = new Notes(this.idx);
+			this.update(expinfo);
+			this.disable();
+			$("#content").show("slide", "fast");
+
+			// hide the wheel
+			$('#wait_wheel').hide()
+		}.bind(this));
 	} else { // a "new" task entry is being created
 		this.idx = null;
 
@@ -211,8 +175,6 @@ function TaskEntry(idx, info){
 			this.enable();
 			$("#content").show("slide", "fast");
 		} else {
-			console.log("flagged for backup " + info.flagged_for_backup)
-
 			TaskInterface.trigger.bind(this)({state:''});
 			this._task_query(function() {
 				this.enable();
@@ -220,11 +182,9 @@ function TaskEntry(idx, info){
 			}.bind(this));
 		}
 		$("#notes textarea").val("").removeAttr("disabled");
-
-		// Disable reacting to clicks on the current row so that things don't get reset
-		this.tr.unbind("click");
 	}
 	
+	this.tr.unbind("click");
 }
 
 TaskEntry.prototype.new_row = function(info) {
@@ -243,22 +203,10 @@ TaskEntry.prototype.new_row = function(info) {
 
 	this.tr = $(document.createElement("tr"));
 	this.tr.attr("id", "row"+info.idx);
-
-
-
-
-
-
-	// TODO change this to reflect the new table structure
 	this.tr.html("<td class='colDate'>"+info.date+" ("+info.idx+")</td>" + 
 		"<td class='colSubj'>"+info.subj+"</td>" + 
 		"<td class='colTask'>"+info.task+"</td>");
 
-
-
-
-
-	
 	// Insert the new row after the top row of the table
 	$("#newentry").after(this.tr);
 	this.tr.addClass("active rowactive running");
@@ -269,21 +217,12 @@ TaskEntry.prototype.new_row = function(info) {
  */ 
 TaskEntry.prototype.update = function(info) {
 	// populate the list of generators
-	console.log("TaskEntry.prototype.update starting");
-
-	if (info.generators.length > 0) {
-		$('#seqgen').empty();
-		$.each(info.generators, function(key, value) {
-			console.log('Updating generator list')
-			console.log(info.generators);
-		     $('#seqgen')
-		          .append($('<option>', { value : key })
-		          .text(value)); 
-		});		
-	}
-
-
-	$('#report_backup').html('Flagged for backup: ' + info.flagged_for_backup+"\n<br><br>");
+	$('#seqgen').empty();
+	$.each(info.generators, function(key, value) {   
+	     $('#seqgen')
+	          .append($('<option>', { value : key })
+	          .text(value)); 
+	});
 
 	this.sequence.update(info.sequence);
 	this.params.update(info.params);
@@ -292,10 +231,6 @@ TaskEntry.prototype.update = function(info) {
 		this.notes.update(info.notes);
 	else
 		$("#notes").attr("value", info.notes);
-
-	// set the checkboxes for the "visible" and "flagged for backup"
-	$('#hidebtn').attr('checked', info.visible);
-	$('#backupbtn').attr('checked', info.flagged_for_backup);
 
 	this.expinfo = info;
 	// set the 'tasks' drop-down menu to match the 'info'
@@ -320,16 +255,27 @@ TaskEntry.prototype.update = function(info) {
 	this.filelist = document.createElement("ul");
 	
 	// List out the data files in the 'filelist'
-	// see TaskEntry.to_json in models.py to see how the file list is generated
+	// see TaskEntry.to_json in models.py
 	for (var sys in info.datafiles) {
-		if (sys == "sequence") { 
-			// Do nothing. No point in showing the sequence..
-		} else {  
-			// info.datafiles[sys] is an array of files for that system
-			for (var i = 0; i < info.datafiles[sys].length; i++) {
-				// Create a list element to hold the file name
+		if (sys == "sequence") {  // info.datafiles["sequence"] is a boolean
+			if (info.datafiles[sys]) {  
 				var file = document.createElement("li");
-				file.textContent = info.datafiles[sys][i];
+				var link = document.createElement("a");
+				link.href = "sequence_for/"+this.idx;
+				link.innerHTML = "Sequence";
+				file.appendChild(link);
+				this.filelist.appendChild(file);
+				numfiles++;
+			}
+		} else {  // info.datafiles[sys] is an array of files for that system
+			for (var i = 0; i < info.datafiles[sys].length; i++) {
+				datafile = info.datafiles[sys][i]
+				var file = document.createElement("li");
+				// var link = document.createElement("a");
+				// link.href = "/static"+datafile;
+				// link.innerHTML = datafile;
+				// file.appendChild(datafile);
+				file.textContent = datafile;
 				this.filelist.appendChild(file);
 				numfiles++;
 			}
@@ -337,26 +283,20 @@ TaskEntry.prototype.update = function(info) {
 	}
 
 	if (numfiles > 0) {
-		// Append the files onto the #files field
 		$("#files").append(this.filelist).show();
 
-		// make the BMI show up if there's a neural data file linked
+		// make the BMI show up if there's a plexon file in the provided data files
 		var found = false;
 		for (var sys in info.datafiles)
-			if ((sys == "plexon") || (sys == "blackrock") || (sys == "tdt")) {
-				found = true;
-				break;
-			}
-
+			found = found || sys == "plexon" || sys == 'blackrock'
 		if (found)
-			// Create the BMI object
 			this.bmi = new BMI(this.idx, info.bmi, info.notes);
 	}
 
 	if (info.sequence) {
 		$("#sequence").show()
 	} else {
-		// $("#sequence").hide()
+		$("#sequence").hide()
 	}
 
     // render plots
@@ -371,8 +311,6 @@ TaskEntry.prototype.update = function(info) {
     } else {
         $("#plots").empty()
     }
-
-    console.log("TaskEntry.prototype.update done!");
 }
 TaskEntry.plot_performance = function() {
 
